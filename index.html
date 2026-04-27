@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FiveM Server Monitor</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background-color: #1a1a2e; color: #ffffff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .title { font-size: 24px; font-weight: bold; display: flex; align-items: center; gap: 10px; }
+        .title-icon { color: #f5c542; font-size: 28px; }
+        .status-info { text-align: right; }
+        .update-time { color: #5c5c6d; font-size: 14px; }
+        .auto-update { color: #2ecc71; font-size: 12px; }
+
+        .controls { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; align-items: flex-end; }
+        .input-group { display: flex; flex-direction: column; gap: 5px; }
+        label { color: #5c5c6d; font-size: 13px; }
+        input { background: transparent; border: 1px solid #5c5c6d; color: #fff; padding: 10px; border-radius: 5px; outline: none; font-size: 15px; }
+        input:focus { border-color: #f5c542; }
+        .btn { background: #f5c542; color: #1a1a2e; border: none; padding: 12px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 15px; transition: 0.2s; }
+        .btn:hover { background: #e0b43b; }
+        .btn:disabled { opacity: 0.7; cursor: not-allowed; }
+
+        .table-container { background: #141426; border-radius: 8px; overflow-x: auto; position: relative; min-height: 200px; }
+        table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #2c2c3e; }
+        th { color: #5c5c6d; font-size: 13px; font-weight: normal; }
+        td { font-size: 15px; }
+        
+        .player-name-cell { display: flex; align-items: center; gap: 15px; }
+        .avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; color: #fff; }
+        
+        .loader { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(26, 26, 46, 0.7); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; border-radius: 8px; z-index: 10; }
+        .loader.active { opacity: 1; pointer-events: all; }
+        .spinner { border: 4px solid #5c5c6d; border-top: 4px solid #f5c542; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .error-msg { color: #ef4444; text-align: center; padding: 30px; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div class="title">
+            <span class="title-icon">👥</span>
+            <span id="header-title">Онлайн игроки</span>
+        </div>
+        <div class="status-info">
+            <div class="update-time" id="update-time">Ожидание данных...</div>
+            <div class="auto-update">Автообновление: 30 сек</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="input-group">
+            <label>IP Адрес</label>
+            <input type="text" id="ip-input" value="2.59.169.66" style="width: 200px;">
+        </div>
+        <div class="input-group">
+            <label>Порт</label>
+            <input type="text" id="port-input" value="27518" style="width: 100px;">
+        </div>
+        <button class="btn" id="update-btn" onclick="triggerUpdate()">
+            <span>🔄</span> Обновить
+        </button>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 50px;">#</th>
+                    <th>ИМЯ ИГРОКА</th>
+                    <th style="width: 200px;">DISCORD</th>
+                    <th style="width: 80px;">ПИНГ</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                </tbody>
+        </table>
+        <div class="loader" id="loader">
+            <div class="spinner"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const avatarColors = ["#3498db", "#1abc9c", "#9b59b6", "#e74c3c", "#2ecc71", "#f39c12", "#34495e", "#e67e22", "#d35400", "#c0392b"];
+
+    function getAvatarColor(id) {
+        return avatarColors[id % avatarColors.length];
+    }
+
+    // Умная функция fetch с таймаутом, чтобы загрузка не висела вечно
+    async function fetchWithTimeout(resource, options = {}) {
+        const { timeout = 5000 } = options; // Ждем максимум 5 секунд
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+        const response = await fetch(resource, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(id);
+        return response;
+    }
+
+    async function triggerUpdate() {
+        const ip = document.getElementById('ip-input').value.trim();
+        const port = document.getElementById('port-input').value.trim();
+        const btn = document.getElementById('update-btn');
+        const loader = document.getElementById('loader');
+        const tableBody = document.getElementById('table-body');
+        const updateTime = document.getElementById('update-time');
+        const headerTitle = document.getElementById('header-title');
+
+        btn.disabled = true;
+        loader.classList.add('active');
+
+        const targetUrl = `http://${ip}:${port}/players.json`;
+        
+        // Список резервных прокси. Если один упал, скрипт попробует следующий
+        const proxies = [
+            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`,
+            `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`
+        ];
+
+        let data = null;
+        let success = false;
+
+        // Пытаемся получить данные перебирая прокси
+        for (let proxyUrl of proxies) {
+            try {
+                const response = await fetchWithTimeout(proxyUrl, { timeout: 5000 });
+                if (response.ok) {
+                    data = await response.json();
+                    success = true;
+                    break; // Данные получены, прерываем цикл поиска
+                }
+            } catch (error) {
+                console.warn(`Прокси ${proxyUrl} не ответил, пробуем другой...`);
+            }
+        }
+
+        try {
+            if (!success) {
+                throw new Error('Все прокси недоступны или сервер выключен');
+            }
+            
+            tableBody.innerHTML = ''; 
+
+            if (data && data.length > 0) {
+                headerTitle.innerText = `Онлайн игроки (${data.length})`;
+                
+                data.forEach((player, index) => {
+                    const name = player.name || "Неизвестно";
+                    const ping = player.ping || "-";
+                    const id = player.id || index;
+                    const firstLetter = name.charAt(0).toUpperCase();
+                    const color = getAvatarColor(id);
+
+                    let discordId = "-";
+                    if (player.identifiers) {
+                        for (let iden of player.identifiers) {
+                            if (iden.startsWith("discord:")) {
+                                discordId = iden.replace("discord:", "");
+                                break;
+                            }
+                        }
+                    }
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="color: #5c5c6d;">${index + 1}</td>
+                        <td>
+                            <div class="player-name-cell">
+                                <div class="avatar" style="background-color: ${color};">${firstLetter}</div>
+                                <span>${name}</span>
+                            </div>
+                        </td>
+                        <td>${discordId}</td>
+                        <td>${ping}</td>
+                    `;
+                    tableBody.appendChild(tr);
+                });
+            } else {
+                headerTitle.innerText = `Онлайн игроки`;
+                tableBody.innerHTML = `<tr><td colspan="4" class="error-msg">На сервере сейчас нет игроков.</td></tr>`;
+            }
+
+            const now = new Date();
+            updateTime.innerText = `Обновлено: ${now.toLocaleTimeString('ru-RU')}`;
+
+        } catch (error) {
+            console.error("Итоговая ошибка:", error);
+            headerTitle.innerText = `Онлайн игроки`;
+            tableBody.innerHTML = `<tr><td colspan="4" class="error-msg">⚠️ Не удалось получить данные. Убедитесь, что IP и порт верны.</td></tr>`;
+        }
+
+        loader.classList.remove('active');
+        btn.disabled = false;
+    }
+
+    // Первый запуск
+    triggerUpdate();
+
+    // Автообновление каждые 30 секунд
+    setInterval(triggerUpdate, 30000);
+</script>
+
+</body>
+</html>
