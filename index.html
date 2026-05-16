@@ -16,6 +16,14 @@
         .update-time { color: #5c5c6d; font-size: 14px; }
         .auto-update { color: #2ecc71; font-size: 12px; }
 
+        /* Стили для плашки с серверами */
+        .server-selector { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; flex-wrap: wrap; }
+        .server-tab { background: #141426; border: 1px solid #5c5c6d; color: #fff; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 14px; transition: 0.2s; white-space: nowrap; outline: none; }
+        .server-tab:hover { border-color: #f5c542; }
+        .server-tab.active { background: #f5c542; color: #1a1a2e; border-color: #f5c542; font-weight: bold; }
+        .add-server-btn { background: transparent; border: 1px dashed #5c5c6d; color: #5c5c6d; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 14px; transition: 0.2s; display: flex; align-items: center; gap: 5px; outline: none; }
+        .add-server-btn:hover { border-color: #2ecc71; color: #2ecc71; }
+
         .controls { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; align-items: flex-end; }
         .input-group { display: flex; flex-direction: column; gap: 5px; }
         label { color: #5c5c6d; font-size: 13px; }
@@ -55,6 +63,9 @@
         </div>
     </div>
 
+    <div class="server-selector" id="server-selector">
+        </div>
+
     <div class="controls">
         <div class="input-group">
             <label>IP Адрес</label>
@@ -80,7 +91,7 @@
                 </tr>
             </thead>
             <tbody id="table-body">
-                </tbody>
+            </tbody>
         </table>
         <div class="loader" id="loader">
             <div class="spinner"></div>
@@ -89,15 +100,70 @@
 </div>
 
 <script>
+    // Массив серверов
+    let servers = [
+        { name: 'WL', ip: '2.59.169.66', port: '27518' },
+        { name: 'AD', ip: '212.41.28.139', port: '48489' }
+    ];
+    let activeServerIndex = 0;
+
+    // Отрисовка плашки серверов
+    function renderServers() {
+        const container = document.getElementById('server-selector');
+        container.innerHTML = '';
+        
+        servers.forEach((srv, index) => {
+            const btn = document.createElement('button');
+            btn.className = `server-tab ${index === activeServerIndex ? 'active' : ''}`;
+            btn.innerText = srv.name;
+            btn.onclick = () => selectServer(index);
+            container.appendChild(btn);
+        });
+
+        const addBtn = document.createElement('button');
+        addBtn.className = 'add-server-btn';
+        addBtn.innerHTML = '<span>+</span> Добавить';
+        addBtn.onclick = addNewServer;
+        container.appendChild(addBtn);
+    }
+
+    // Выбор сервера из плашки
+    function selectServer(index) {
+        if (index === activeServerIndex) return; // Не обновлять, если кликнули на активный
+        activeServerIndex = index;
+        const srv = servers[index];
+        
+        // Обновляем инпуты
+        document.getElementById('ip-input').value = srv.ip;
+        document.getElementById('port-input').value = srv.port;
+        
+        // Перерисовываем UI и запускаем обновление
+        renderServers();
+        triggerUpdate();
+    }
+
+    // Добавление нового сервера
+    function addNewServer() {
+        const name = prompt("Введите название сервера (например, Main):");
+        if (!name) return;
+        const ip = prompt("Введите IP адрес (например, 127.0.0.1):");
+        if (!ip) return;
+        const port = prompt("Введите порт (например, 30120):");
+        if (!port) return;
+
+        servers.push({ name, ip, port });
+        selectServer(servers.length - 1);
+    }
+
     const avatarColors = ["#3498db", "#1abc9c", "#9b59b6", "#e74c3c", "#2ecc71", "#f39c12", "#34495e", "#e67e22", "#d35400", "#c0392b"];
 
     function getAvatarColor(id) {
         return avatarColors[id % avatarColors.length];
     }
 
-    // Умная функция fetch с таймаутом, чтобы загрузка не висела вечно
+    // Умная функция fetch с таймаутом
     async function fetchWithTimeout(resource, options = {}) {
-        const { timeout = 5000 } = options; // Ждем максимум 5 секунд
+        const { timeout = 5000 } = options; 
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeout);
         const response = await fetch(resource, {
@@ -122,7 +188,6 @@
 
         const targetUrl = `http://${ip}:${port}/players.json`;
         
-        // Список резервных прокси. Если один упал, скрипт попробует следующий
         const proxies = [
             `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`,
             `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
@@ -132,14 +197,13 @@
         let data = null;
         let success = false;
 
-        // Пытаемся получить данные перебирая прокси
         for (let proxyUrl of proxies) {
             try {
                 const response = await fetchWithTimeout(proxyUrl, { timeout: 5000 });
                 if (response.ok) {
                     data = await response.json();
                     success = true;
-                    break; // Данные получены, прерываем цикл поиска
+                    break; 
                 }
             } catch (error) {
                 console.warn(`Прокси ${proxyUrl} не ответил, пробуем другой...`);
@@ -154,7 +218,13 @@
             tableBody.innerHTML = ''; 
 
             if (data && data.length > 0) {
-                headerTitle.innerText = `Онлайн игроки (${data.length})`;
+                // Если выбран сервер из списка, покажем его название, иначе просто "Онлайн игроки"
+                const activeSrvName = servers[activeServerIndex].ip === ip && servers[activeServerIndex].port === port 
+                    ? servers[activeServerIndex].name 
+                    : "";
+                const titlePrefix = activeSrvName ? `[${activeSrvName}] ` : "";
+                
+                headerTitle.innerText = `${titlePrefix}Онлайн: ${data.length}`;
                 
                 data.forEach((player, index) => {
                     const name = player.name || "Неизвестно";
@@ -205,7 +275,10 @@
         btn.disabled = false;
     }
 
-    // Первый запуск
+    // Инициализация при первом запуске
+    document.getElementById('ip-input').value = servers[activeServerIndex].ip;
+    document.getElementById('port-input').value = servers[activeServerIndex].port;
+    renderServers();
     triggerUpdate();
 
     // Автообновление каждые 30 секунд
