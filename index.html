@@ -100,10 +100,11 @@
 </div>
 
 <script>
-    // Массив серверов
+    // Массив серверов по умолчанию
     let servers = [
         { name: 'WL', ip: '2.59.169.66', port: '27518' },
-        { name: 'AD', ip: '212.41.28.139', port: '48489' }
+        { name: 'AD', ip: '212.41.28.139', port: '48489' },
+        { name: 'TLOU', ip: '62.122.214.166', port: '30120' }
     ];
     let activeServerIndex = 0;
 
@@ -129,7 +130,7 @@
 
     // Выбор сервера из плашки
     function selectServer(index) {
-        if (index === activeServerIndex) return; // Не обновлять, если кликнули на активный
+        if (index === activeServerIndex) return; 
         activeServerIndex = index;
         const srv = servers[index];
         
@@ -161,7 +162,7 @@
         return avatarColors[id % avatarColors.length];
     }
 
-    // Умная функция fetch с таймаутом
+    // Функция fetch с таймаутом
     async function fetchWithTimeout(resource, options = {}) {
         const { timeout = 5000 } = options; 
         const controller = new AbortController();
@@ -188,6 +189,7 @@
 
         const targetUrl = `http://${ip}:${port}/players.json`;
         
+        // Массив прокси для обхода CORS
         const proxies = [
             `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`,
             `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
@@ -197,6 +199,7 @@
         let data = null;
         let success = false;
 
+        // Перебираем прокси, пока не получим ответ
         for (let proxyUrl of proxies) {
             try {
                 const response = await fetchWithTimeout(proxyUrl, { timeout: 5000 });
@@ -218,7 +221,7 @@
             tableBody.innerHTML = ''; 
 
             if (data && data.length > 0) {
-                // Если выбран сервер из списка, покажем его название, иначе просто "Онлайн игроки"
+                // Отображаем название активного сервера, если инпуты совпадают с ним
                 const activeSrvName = servers[activeServerIndex].ip === ip && servers[activeServerIndex].port === port 
                     ? servers[activeServerIndex].name 
                     : "";
@@ -228,32 +231,48 @@
                 
                 data.forEach((player, index) => {
                     const name = player.name || "Неизвестно";
-                    const ping = player.ping || "-";
+                    const ping = player.ping !== undefined ? player.ping : "-";
                     const id = player.id || index;
                     const firstLetter = name.charAt(0).toUpperCase();
                     const color = getAvatarColor(id);
 
                     let discordId = "-";
-                    if (player.identifiers) {
+                    let hasRealIdentifiers = false;
+
+                    if (player.identifiers && player.identifiers.length > 0) {
                         for (let iden of player.identifiers) {
                             if (iden.startsWith("discord:")) {
                                 discordId = iden.replace("discord:", "");
-                                break;
+                            }
+                            // Проверка на реальные идентификаторы для исключения ботов
+                            if (iden.startsWith("steam:") || iden.startsWith("license:") || iden.startsWith("discord:") || iden.startsWith("xbl:")) {
+                                hasRealIdentifiers = true;
                             }
                         }
                     }
 
+                    // Определение бота: пинг 0 и нет реальных ID
+                    const isLikelyBot = (ping === 0 || ping === "0") && !hasRealIdentifiers;
+                    
+                    const botBadge = isLikelyBot ? `<span title="Скорее всего это бот" style="cursor: help; margin-left: 5px;">🤖</span>` : '';
+                    const pingDisplay = isLikelyBot ? `<span style="color: #5c5c6d;">Бот</span>` : ping;
+
                     const tr = document.createElement('tr');
+                    // Если это бот, делаем строку слегка прозрачной
+                    if (isLikelyBot) {
+                        tr.style.opacity = "0.7";
+                    }
+
                     tr.innerHTML = `
                         <td style="color: #5c5c6d;">${index + 1}</td>
                         <td>
                             <div class="player-name-cell">
                                 <div class="avatar" style="background-color: ${color};">${firstLetter}</div>
-                                <span>${name}</span>
+                                <span>${name} ${botBadge}</span>
                             </div>
                         </td>
                         <td>${discordId}</td>
-                        <td>${ping}</td>
+                        <td>${pingDisplay}</td>
                     `;
                     tableBody.appendChild(tr);
                 });
@@ -268,7 +287,7 @@
         } catch (error) {
             console.error("Итоговая ошибка:", error);
             headerTitle.innerText = `Онлайн игроки`;
-            tableBody.innerHTML = `<tr><td colspan="4" class="error-msg">⚠️ Не удалось получить данные. Убедитесь, что IP и порт верны.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="4" class="error-msg">⚠️ Не удалось получить данные. Убедитесь, что IP и порт верны, а сервер запущен.</td></tr>`;
         }
 
         loader.classList.remove('active');
