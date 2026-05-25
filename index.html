@@ -232,6 +232,18 @@ tr.fsep td{border-bottom:2px solid rgba(245,197,66,.25)}
 .md2 .ig{margin-bottom:var(--s4)} .md2 .ig:last-of-type{margin-bottom:var(--s5)}
 .md2 input{width:100%;padding:var(--s3)}
 
+/* NOTE EDIT */
+.fav-note-edit{display:flex;gap:var(--s2);margin-top:var(--s2);align-items:center}
+.fav-note-edit input{flex:1;min-width:0;font-size:var(--text-xs);background:var(--sur);border:1px solid var(--bdr);color:var(--tx);padding:4px var(--s2);border-radius:var(--r-sm);outline:none;transition:border-color var(--t)}
+.fav-note-edit input:focus{border-color:var(--acc);box-shadow:0 0 0 2px var(--accbg)}
+.fav-note-edit input::placeholder{color:var(--txf)}
+.note-save{font-size:var(--text-xs);font-weight:600;color:var(--grn);border:1px solid var(--grn);border-radius:var(--r-sm);padding:3px var(--s2);background:var(--grnbg);white-space:nowrap;transition:background var(--t),color var(--t);flex-shrink:0}
+.note-save:hover{background:var(--grn);color:#fff}
+.fav-note-badge{font-size:var(--text-xs);color:var(--acc);margin-top:3px;font-style:italic;opacity:.85}
+/* note badge in main table */
+.pn-note{font-size:var(--text-xs);color:var(--acc);font-style:italic;opacity:.8;margin-left:4px}
+
+/* NOTE TOAST */
 /* TOAST */
 .tc{position:fixed;bottom:var(--s6);right:var(--s6);z-index:200;display:flex;flex-direction:column;gap:var(--s2);pointer-events:none}
 .toast{background:var(--sur2);border:1px solid var(--bdr);border-radius:var(--r-md);padding:var(--s3) var(--s4);font-size:var(--text-sm);box-shadow:var(--sh2);display:flex;align-items:center;gap:var(--s2);pointer-events:auto;animation:tin .25s cubic-bezier(.16,1,.3,1);max-width:300px}
@@ -258,7 +270,7 @@ tbody tr{animation:ri .18s ease both}
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       <span id="htitle">Онлайн игроки</span>
     </div>
-    <div class="subtitle">FiveM Server Monitor</div>
+    <div class="subtitle" id="subt">FiveM Server Monitor</div>
   </div>
   <div class="h-right">
     <button class="icon-btn" id="settbtn" onclick="toggleSettings()" title="Настройки">
@@ -275,11 +287,11 @@ tbody tr{animation:ri .18s ease both}
 </div>
 
 <div class="stats">
-  <div class="stat"><div class="stat-lbl">Онлайн</div><div class="stat-val acc" id="s-on">—</div></div>
-  <div class="stat"><div class="stat-lbl">Ср. пинг</div><div class="stat-val" id="s-ping">—</div></div>
-  <div class="stat"><div class="stat-lbl">Ботов</div><div class="stat-val" id="s-bot">—</div></div>
+  <div class="stat"><div class="stat-lbl" id="lblOnline">Онлайн</div><div class="stat-val acc" id="s-on">—</div></div>
+  <div class="stat"><div class="stat-lbl" id="lblPing">Ср. пинг</div><div class="stat-val" id="s-ping">—</div></div>
+  <div class="stat"><div class="stat-lbl" id="lblBots">Ботов</div><div class="stat-val" id="s-bot">—</div></div>
   <div class="stat clickable" id="favStat" onclick="openFavModal()" title="Открыть список избранных">
-    <div class="stat-lbl">⭐ Избранных</div>
+    <div class="stat-lbl" id="lblFavs">⭐ Избранных</div>
     <div class="stat-val str" id="s-fav">0</div>
   </div>
 </div>
@@ -420,10 +432,52 @@ var LANGS={
   en:{noConn:'No Connection',noConnDesc:'Check IP/port or the server is temporarily unavailable.',empty:'Server Empty',emptyDesc:'No players on the server right now.',noFavs:'No Favorites',noFavsDesc:'Click ⭐ next to a player name to add.',notFound:'Nothing found',updAt:'Updated: ',online:'Online',fillFields:'Fill in all fields',favAdd:'added to favorites',copied:'Link copied!',srvAdded:'Server added',noData:'Failed to fetch data'}
 };
 var curLang='ru';
+var UI = {
+  ru:{title:'Онлайн игроки',waiting:'Ожидание...',auto:'Авто: ',online:'Онлайн',avgPing:'Ср. пинг',bots:'Ботов',favs:'⭐ Избранных',settings:'Настройки',interval:'Интервал обновления',sound:'Звук уведомлений',soundDesc:'Звук при входе избранного',display:'Отображение',compact:'Компактный режим',language:'Язык',pin:'Закрепить сервер',pinDesc:'Скрывает вкладки серверов',share:'Поделиться ссылкой',copy:'Копировать',ip:'IP Адрес',port:'Порт',search:'Поиск',refresh:'Обновить',all:'Все игроки',fonly:'Избранные',favTitle:'⭐ Избранные игроки',favClear:'Очистить всё',favClose:'Закрыть',addSrv:'Добавить сервер',add:'Добавить',cancel:'Отмена',name:'Название',note:'Заметка',notePh:'Заметка (имя, роль...)',noteSave:'✓',noteEmpty:'0 игроков в избранном'},
+  en:{title:'Online Players',waiting:'Waiting...',auto:'Auto: ',online:'Online',avgPing:'Avg Ping',bots:'Bots',favs:'⭐ Favorites',settings:'Settings',interval:'Update interval',sound:'Sound alerts',soundDesc:'Sound when fav joins',display:'Display',compact:'Compact mode',language:'Language',pin:'Pin server',pinDesc:'Hides server tabs',share:'Share link',copy:'Copy',ip:'IP Address',port:'Port',search:'Search',refresh:'Refresh',all:'All Players',fonly:'Favorites',favTitle:'⭐ Favorite players',favClear:'Clear all',favClose:'Close',addSrv:'Add server',add:'Add',cancel:'Cancel',name:'Name',note:'Note',notePh:'Note (name, role...)',noteSave:'✓',noteEmpty:'0 players in favorites'}
+};
 function t(k){ return (LANGS[curLang]||LANGS.ru)[k]||k; }
-function setLang(l){ curLang=l; document.querySelectorAll('.lang-btn').forEach(function(b){ b.classList.toggle('active',b.dataset.lang===l); }); try{ localStorage.setItem('fivem_lang',l); }catch(e){} }
+function ui(k){ return (UI[curLang]||UI.ru)[k]||k; }
+function applyLang(){
+  var setText = function(sel, val){ var el=document.querySelector(sel); if(el) el.textContent=val; };
+  setText('#htitle', ui('title'));
+  setText('#subt', 'FiveM Server Monitor');
+  var lb=document.querySelector('.live-badge'); if(lb) lb.innerHTML='<div class="dot"></div>'+ui('auto')+'<span id="cdtxt">'+cdVal+'</span>с';
+  setText('#lblOnline', ui('online'));
+  setText('#lblPing', ui('avgPing'));
+  setText('#lblBots', ui('bots'));
+  setText('#lblFavs', ui('favs'));
+  var labels=document.querySelectorAll('.settings-panel .sp-label');
+  if(labels[0]) labels[0].textContent=ui('interval');
+  if(labels[1]) labels[1].textContent=ui('sound');
+  if(labels[2]) labels[2].textContent=ui('display');
+  if(labels[3]) labels[3].textContent=ui('language');
+  if(labels[4]) labels[4].textContent=ui('pin');
+  if(labels[5]) labels[5].textContent=ui('share');
+  var ctrlLabels=document.querySelectorAll('.controls label');
+  if(ctrlLabels[0]) ctrlLabels[0].textContent=ui('ip');
+  if(ctrlLabels[1]) ctrlLabels[1].textContent=ui('port');
+  if(ctrlLabels[2]) ctrlLabels[2].textContent=ui('search');
+  setText('#fa', ui('all')); setText('#ff', ui('fonly'));
+  setText('#clrAllBtn', ui('favClear'));
+  setText('#favModalTitle', ui('favTitle'));
+  setText('#mtitle', ui('addSrv'));
+  var addLabels=document.querySelectorAll('#addModal label');
+  if(addLabels[0]) addLabels[0].textContent=ui('name');
+  if(addLabels[1]) addLabels[1].textContent=ui('ip');
+  if(addLabels[2]) addLabels[2].textContent=ui('port');
+  var modalBtns=document.querySelectorAll('#favModal .gbtn');
+  if(modalBtns[0]) modalBtns[0].textContent=ui('favClose');
+  if(modalBtns[1]) modalBtns[1].textContent=ui('favClose');
+  var inputs=[document.getElementById('ip'),document.getElementById('pt'),document.getElementById('sch')];
+  if(inputs[2]) inputs[2].placeholder=curLang==='en'?'Player name...':'Имя игрока...';
+  if(document.getElementById('mn')) document.getElementById('mn').placeholder=curLang==='en'?'Example: Main':'Например: Main';
+  if(document.getElementById('mi')) document.getElementById('mi').placeholder='127.0.0.1';
+  if(document.getElementById('mp')) document.getElementById('mp').placeholder='30120';
+}
+function setLang(l){ curLang=l; document.querySelectorAll('.lang-btn').forEach(function(b){ b.classList.toggle('active',b.dataset.lang===l); }); try{ localStorage.setItem('fivem_lang',l); }catch(e){} applyLang(); renderTable(); if(document.getElementById('favModal').classList.contains('open')) renderFavModal(); }
 
-var SRVS=[{name:'WL',ip:'2.59.169.66',port:'27518'},{name:'AD',ip:'212.41.28.139',port:'48489'},{name:'TLOU',ip:'62.122.214.166',port:'30120'}];
+var SRVS=[{name:'WL',ip:'2.59.169.66',port:'27518'},{name:'AD',ip:'212.41.28.139',port:'48489'},{name:'BL',ip:'84.38.185.101',port:'48765'},{name:'TLOU',ip:'62.122.214.166',port:'30120'}];
 var sCnts={}, activeI=0, players=[], sortK=null, sortA=true, fmode='all';
 var cdTimer=null, cdVal=30, cdInterval=30, abCtrl=null;
 var soundOn=false, compactOn=false, pinnedIdx=-1, prevNames=null;
@@ -438,10 +492,21 @@ function copyUrl(){ var inp=document.getElementById('shareUrlInput'); if(!inp) r
 function populatePinSelect(){ var sel=document.getElementById('pinSelect'); sel.innerHTML='<option value="">— Не закреплён —</option>'; SRVS.forEach(function(s,i){ sel.innerHTML+='<option value="'+i+'">'+s.name+' ('+s.ip+':'+s.port+')</option>'; }); if(pinnedIdx>=0) sel.value=pinnedIdx; }
 function readUrlParams(){ var p=new URLSearchParams(window.location.search),ip=p.get('ip'),port=p.get('port'); if(ip&&port){ document.getElementById('ip').value=ip; document.getElementById('pt').value=port; SRVS.forEach(function(s,i){ if(s.ip===ip&&s.port===port) activeI=i; }); } }
 
-var FAV_KEY='fivem_favs';
-var favSet=(function(){ try{ var r=localStorage.getItem(FAV_KEY); return new Set(r?JSON.parse(r):[]); }catch(e){ return new Set(); } })();
-function saveFavs(){ try{ localStorage.setItem(FAV_KEY,JSON.stringify(Array.from(favSet))); }catch(e){} }
-function toggleFav(name){ var was=favSet.has(name); if(was){ favSet.delete(name); } else { favSet.add(name); toast('⭐ '+name+' — '+t('favAdd'),'nf'); } saveFavs(); document.getElementById('s-fav').textContent=favSet.size; renderTable(); }
+var favSet=new Set();
+var favNotes={};
+var _favKey='', _noteKey='';
+function favKeyFor(ip,port){ return 'fivem_favs_'+ip+'_'+port; }
+function noteKeyFor(ip,port){ return 'fivem_notes_'+ip+'_'+port; }
+function loadServerFavs(ip,port){
+  _favKey=favKeyFor(ip,port); _noteKey=noteKeyFor(ip,port);
+  try{ var r=localStorage.getItem(_favKey); favSet=new Set(r?JSON.parse(r):[]); }catch(e){ favSet=new Set(); }
+  try{ var n=localStorage.getItem(_noteKey); favNotes=n?JSON.parse(n):{}; }catch(e){ favNotes={}; }
+  document.getElementById('s-fav').textContent=favSet.size;
+}
+function saveFavs(){ try{ localStorage.setItem(_favKey,JSON.stringify(Array.from(favSet))); }catch(e){} }
+function saveNotes(){ try{ localStorage.setItem(_noteKey,JSON.stringify(favNotes)); }catch(e){} }
+
+function toggleFav(name){ var was=favSet.has(name); if(was){ favSet.delete(name); } else { favSet.add(name); toast('⭐ '+name+' — '+t('favAdd'),'nf'); } saveFavs(); loadServerFavs(SRVS[activeI].ip,SRVS[activeI].port); renderTable(); }
 function clearAllFavs(){ if(!favSet.size) return; favSet.clear(); saveFavs(); document.getElementById('s-fav').textContent=0; renderTable(); renderFavModal(); toast('Список избранных очищен','nf'); }
 
 var AVC=["#3b82f6","#10b981","#8b5cf6","#ef4444","#f59e0b","#06b6d4","#ec4899","#84cc16","#f97316","#6366f1"];
@@ -464,12 +529,29 @@ function renderFavModal(){
     var color=avColor(name),letter=name.charAt(0).toUpperCase();
     var statusHtml=isOnline?'<div class="fav-status online"><span class="fdot"></span>В сети'+(ping>0?' · '+ping+'мс':'')+'</div>':'<div class="fav-status">Не в сети</div>';
     var div=document.createElement('div'); div.className='fav-item';
-    div.innerHTML='<div class="fav-av" style="background:'+color+'">'+letter+'</div><div class="fav-info"><div class="fav-name">'+name+'</div>'+statusHtml+'</div><button class="fav-remove" data-name="'+encodeURIComponent(name)+'" title="Убрать из избранного"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>';
+    var note=favNotes[name]||'';
+    var noteBadge=note?'<div class="fav-note-badge">('+ note +')</div>':'';
+    div.innerHTML='<div class="fav-av" style="background:'+color+'">'+letter+'</div>'
+      +'<div class="fav-info">'
+      +'<div class="fav-name">'+name+'</div>'
+      +statusHtml
+      +noteBadge
+      +'<div class="fav-note-edit">'
+      +'<input type="text" class="note-input" data-name="'+encodeURIComponent(name)+'" value="'+note.replace(/"/g,'&quot;')+'" placeholder="Заметка (имя, роль...)" maxlength="40">'
+      +'<button class="note-save" data-name="'+encodeURIComponent(name)+'">✓</button>'
+      +'</div>'
+      +'</div>'
+      +'<button class="fav-remove" data-name="'+encodeURIComponent(name)+'" title="Убрать из избранного"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>';
     frag.appendChild(div);
   });
   list.innerHTML=''; list.appendChild(frag);
 }
-document.getElementById('favList').addEventListener('click',function(e){ var btn=e.target.closest('.fav-remove'); if(!btn) return; var name=decodeURIComponent(btn.dataset.name); favSet.delete(name); saveFavs(); document.getElementById('s-fav').textContent=favSet.size; renderTable(); renderFavModal(); toast('Убран: '+name,'nf'); });
+document.getElementById('favList').addEventListener('click',function(e){
+  var removeBtn=e.target.closest('.fav-remove');
+  if(removeBtn){ var name=decodeURIComponent(removeBtn.dataset.name); favSet.delete(name); delete favNotes[name]; saveFavs(); saveNotes(); loadServerFavs(SRVS[activeI].ip,SRVS[activeI].port); renderTable(); renderFavModal(); toast('Убран: '+name,'nf'); return; }
+  var saveBtn=e.target.closest('.note-save');
+  if(saveBtn){ var name=decodeURIComponent(saveBtn.dataset.name); var inp=saveBtn.previousElementSibling; var val=inp.value.trim(); if(val) favNotes[name]=val; else delete favNotes[name]; saveNotes(); renderFavModal(); renderTable(); toast('Заметка сохранена','ok'); return; }
+});
 
 function playBeep(){ if(!soundOn) return; try{ var ctx=new(window.AudioContext||window.webkitAudioContext)(); var osc=ctx.createOscillator(),gain=ctx.createGain(); osc.connect(gain); gain.connect(ctx.destination); osc.frequency.value=880; osc.type='sine'; gain.gain.setValueAtTime(0.3,ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.4); osc.start(); osc.stop(ctx.currentTime+0.4); }catch(e){} }
 
@@ -481,7 +563,7 @@ function resetCD(){ clearInterval(cdTimer); cdVal=cdInterval; updateCDUI(); cdTi
 function updateCDUI(){ var f=document.getElementById('cfill'),tx=document.getElementById('cdtxt'); if(f) f.style.width=((cdInterval-cdVal)/cdInterval*100)+'%'; if(tx) tx.textContent=cdVal; }
 
 function renderSrvs(){ if(pinnedIdx>=0){ document.getElementById('srvbar').style.display='none'; return; } document.getElementById('srvbar').style.display=''; var c=document.getElementById('srvbar'); c.innerHTML=''; SRVS.forEach(function(s,i){ var b=document.createElement('button'); b.className='srv-tab'+(i===activeI?' active':''); var cnt=sCnts[i]!==undefined?'<span class="tab-cnt">'+sCnts[i]+'</span>':''; b.innerHTML=s.name+cnt; b.title=s.ip+':'+s.port; b.onclick=function(){ selSrv(i); }; c.appendChild(b); }); var a=document.createElement('button'); a.className='add-btn'; a.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Добавить'; a.onclick=openAddMod; c.appendChild(a); populatePinSelect(); }
-function selSrv(i){ if(pinnedIdx>=0&&i!==pinnedIdx) return; if(i===activeI) return; activeI=i; document.getElementById('ip').value=SRVS[i].ip; document.getElementById('pt').value=SRVS[i].port; document.getElementById('sch').value=''; renderSrvs(); doUpdate(); }
+function selSrv(i){ if(pinnedIdx>=0&&i!==pinnedIdx) return; if(i===activeI) return; activeI=i; document.getElementById('ip').value=SRVS[i].ip; document.getElementById('pt').value=SRVS[i].port; document.getElementById('sch').value=''; loadServerFavs(SRVS[i].ip,SRVS[i].port); renderSrvs(); doUpdate(); }
 
 function openAddMod(){ document.getElementById('addModal').classList.add('open'); document.getElementById('mn').focus(); }
 function closeAddMod(){ document.getElementById('addModal').classList.remove('open'); ['mn','mi','mp'].forEach(function(id){ document.getElementById(id).value=''; }); }
@@ -523,7 +605,8 @@ function renderTable(){
     var tr=document.createElement('tr');
     if(isFav) tr.classList.add('frow'); if(isSep) tr.classList.add('fsep'); if(isBot) tr.style.opacity='.45';
     tr.style.animationDelay=(vi*14)+'ms';
-    tr.innerHTML='<td class="nc">'+(vi+1)+'</td><td style="padding-right:0;padding-left:var(--s3)"><button class="sb'+(isFav?' on':'')+'" data-name="'+encodeURIComponent(name)+'" aria-label="'+sl+'" title="'+sl+'">'+( isFav?SON:SOFF)+'</button></td><td><div class="pc"><div class="av" style="background:'+color+'">'+letter+'</div><span class="pn">'+name+(isBot?'<span class="bot">Bot</span>':'')+'</span></div></td><td><div class="dc">'+dhtml+'</div></td><td>'+pinghtml+'</td>';
+        var noteTag=''; if(favNotes[name]) noteTag='<span class="pn-note">('+favNotes[name]+')</span>';
+    tr.innerHTML='<td class="nc">'+(vi+1)+'</td><td style="padding-right:0;padding-left:var(--s3)"><button class="sb'+(isFav?' on':'')+'" data-name="'+encodeURIComponent(name)+'" aria-label="'+sl+'" title="'+sl+'">'+( isFav?SON:SOFF)+'</button></td><td><div class="pc"><div class="av" style="background:'+color+'">'+letter+'</div><span class="pn">'+name+(isBot?'<span class="bot">Bot</span>':'')+noteTag+'</span></div></td><td><div class="dc">'+dhtml+'</div></td><td>'+pinghtml+'</td>';
     frag.appendChild(tr); lastFav=isFav;
   });
   tbody.appendChild(frag);
@@ -548,6 +631,7 @@ function fetchFast(ip,port){
 function doUpdate(){
   var ip=document.getElementById('ip').value.trim(),port=document.getElementById('pt').value.trim();
   if(!ip||!port){ toast('Введите IP и порт','er'); return; }
+  loadServerFavs(ip,port);
   updateShareUrl();
   var btn=document.getElementById('updbtn'),ldr=document.getElementById('loader');
   btn.disabled=true; btn.classList.add('loading'); ldr.classList.add('on'); resetCD();
@@ -584,13 +668,14 @@ function loadPrefs(){
   }catch(e){}
   document.querySelectorAll('.int-btn').forEach(function(b){ b.classList.toggle('active',parseInt(b.dataset.sec)===cdInterval); });
   document.querySelectorAll('.lang-btn').forEach(function(b){ b.classList.toggle('active',b.dataset.lang===curLang); });
+  applyLang();
 }
 
 loadPrefs();
 readUrlParams();
 document.getElementById('ip').value=SRVS[activeI].ip;
 document.getElementById('pt').value=SRVS[activeI].port;
-document.getElementById('s-fav').textContent=favSet.size;
+loadServerFavs(SRVS[activeI].ip,SRVS[activeI].port);
 populatePinSelect();
 renderSrvs();
 if(pinnedIdx>=0) document.getElementById('srvbar').style.display='none';
