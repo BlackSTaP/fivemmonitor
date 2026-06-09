@@ -615,7 +615,7 @@ document.getElementById('tbody').addEventListener('click',function(e){ var btn=e
 
 function fetchFast(ip,port){
   var url='http://'+ip+':'+port+'/players.json';
-  var proxies=['https://corsproxy.io/?url='+encodeURIComponent(url),'https://api.cors.lol/?url='+encodeURIComponent(url),'https://api.allorigins.win/raw?url='+encodeURIComponent(url),'https://cors.x2u.in/'+encodeURIComponent(url)];
+  var proxies=['https://my-cors-proxy.blackstapua.workers.dev/?'+url,'https://corsproxy.io/?url='+encodeURIComponent(url),'https://api.cors.lol/?url='+encodeURIComponent(url)];
   if(abCtrl){ try{ abCtrl.abort(); }catch(e){} }
   abCtrl=new AbortController(); var sig=abCtrl.signal;
   return new Promise(function(resolve){
