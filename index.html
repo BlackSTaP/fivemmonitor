@@ -615,16 +615,16 @@ document.getElementById('tbody').addEventListener('click',function(e){ var btn=e
 
 function fetchFast(ip,port){
   var url='http://'+ip+':'+port+'/players.json';
-  var proxies=['https://api.allorigins.win/raw?url='+encodeURIComponent(url),'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(url),'https://thingproxy.freeboard.io/fetch/'+url];
+  var proxies=['https://corsproxy.io/?url='+encodeURIComponent(url),'https://api.cors.lol/?url='+encodeURIComponent(url),'https://api.allorigins.win/raw?url='+encodeURIComponent(url),'https://cors.x2u.in/'+encodeURIComponent(url)];
   if(abCtrl){ try{ abCtrl.abort(); }catch(e){} }
   abCtrl=new AbortController(); var sig=abCtrl.signal;
   return new Promise(function(resolve){
     var done=false,errs=0,total=proxies.length;
     proxies.forEach(function(proxy){
-      var timer=setTimeout(function(){ errs++; if(errs===total&&!done) resolve(null); },4500);
+      var timer=setTimeout(function(){ errs++; if(errs===total&&!done) resolve(null); },6000);
       fetch(proxy,{signal:sig}).then(function(r){ clearTimeout(timer); if(!r.ok) throw new Error('bad'); return r.json(); }).then(function(data){ clearTimeout(timer); if(!done&&Array.isArray(data)){ done=true; resolve(data); } else throw new Error('na'); }).catch(function(){ clearTimeout(timer); errs++; if(errs===total&&!done) resolve(null); });
     });
-    setTimeout(function(){ if(!done){ done=true; resolve(null); } },5500);
+    setTimeout(function(){ if(!done){ done=true; resolve(null); } },7500);
   });
 }
 
